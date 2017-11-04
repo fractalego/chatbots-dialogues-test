@@ -1,0 +1,10 @@
+numpy
+scipy
+networkx==1.11
+python-igraph
+nltk
+gensim==3.0.1
+sklearn
+matplotlib
+psycopg2
+bhtsne

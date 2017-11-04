@@ -1,47 +1,31 @@
-import numpy
-import sys
-import copy
-import random
-import random
-import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
 import nltk
 import random
-import infomap
 import igraph as ig
 
-from scipy.cluster import hierarchy
-from scipy.spatial import distance
-from collections import defaultdict
-from sklearn.cluster import DBSCAN, KMeans
 from gensim.models import Doc2Vec
-from os import listdir
-from os.path import isfile, join
 from gensim import utils
 
 
 class ConversationGraph:
-
-
     def __init__(self, conversation_file, edges_filename, doc2vec_filename):
         self.g, self.vertex_to_lines_dict, self.lines_to_vertex_dict = self._load_edges(edges_filename)
         self.doc2vec_model = Doc2Vec.load(doc2vec_filename)
         goal_line = 'LINES_106702'
+        print(self.lines_to_vertex_dict.keys())
         self.goal = self.lines_to_vertex_dict[goal_line]
         self.goal_vector = self.doc2vec_model.docvecs[goal_line]
-        self.lines_dict = {'LINES_' + str(i):line.replace('\n','')
+        self.lines_dict = {'LINES_' + str(i): line.replace('\n', '')
                            for i, line in enumerate(open(conversation_file,
-                                                         encoding = "ISO-8859-1").readlines())}
+                                                         encoding="ISO-8859-1").readlines())}
         self.current_node = -1
         self.current_vector = []
         self.path = []
-        
+
     def _load_edges(self, filename):
         file = open(filename)
         lines = file.readlines()
         g = ig.Graph(directed=False)
-    
+
         vertex_to_lines_dict = {}
         lines_to_vertex_dict = {}
         vertices = set()
@@ -53,8 +37,8 @@ class ConversationGraph:
                 continue
             from_vertex = row[0]
             to_vertex = row[2]
-            from_lines = row[1].replace(' ','').replace('\'','').split(',')
-            to_lines = row[3].replace(' ','').replace('\'','').split(',')
+            from_lines = row[1].replace(' ', '').replace('\'', '').split(',')
+            to_lines = row[3].replace(' ', '').replace('\'', '').split(',')
             vertex_to_lines_dict[from_vertex] = from_lines
             vertex_to_lines_dict[to_vertex] = to_lines
             for line in from_lines:
@@ -66,21 +50,19 @@ class ConversationGraph:
                 try:
                     lines_to_vertex_dict[line].append(to_vertex)
                 except:
-                    lines_to_vertex_dict[line] = to_vertex            
+                    lines_to_vertex_dict[line] = to_vertex
             vertices.add(from_vertex)
             vertices.add(to_vertex)
-            edges.append((from_vertex,to_vertex))
+            edges.append((from_vertex, to_vertex))
         g.add_vertices(list(vertices))
         g.add_edges(edges)
-        ig.plot(g)
         return g, vertex_to_lines_dict, lines_to_vertex_dict
 
-    
     def _get_most_similar_vertex_from_string(self, string):
         model = self.doc2vec_model
         tokenizer = nltk.tokenize.TweetTokenizer()
         words = tokenizer.tokenize(utils.to_unicode(string))
-        words = [word.lower() for word in words]        
+        words = [word.lower() for word in words]
         vector = model.infer_vector(words)
         pairs = model.docvecs.most_similar([vector], topn=1000)
         best_node = -1
@@ -95,30 +77,26 @@ class ConversationGraph:
             except:
                 pass
         return best_node, best_line
-    
-    
+
     def define_endpoint(self, end_string):
         self.goal, self.goal_vector = self._get_most_similar_vertex_from_string(end_string)
 
-        
     def _get_shortest_paths(self, start, end):
         try:
             position = self.path.index(int(start))
-            self.path = self.path[position+1:]
+            self.path = self.path[position + 1:]
             return self.path
         except:
             pass
         self.path = self.g.get_shortest_paths(start, end)[0]
         return self.path
-        
-    
+
     def _find_next_node_in_path(self, node):
         path = self._get_shortest_paths(node, self.goal)
         if path:
             return str(path[0])
         return -1
 
-        
     def find_next_line_in_path(self, string):
         current_node, current_vector = self._get_most_similar_vertex_from_string(string)
         if current_node == self.goal:
@@ -132,9 +110,9 @@ class ConversationGraph:
         self.current_vector = current_vector
         lines = self.vertex_to_lines_dict[node]
         return self.lines_dict[random.choice(lines)]
-        
 
-if __name__ == '__main__':    
+
+if __name__ == '__main__':
 
     conversation_graph = ConversationGraph('ordered_lines.txt',
                                            'results/edges.txt',
@@ -152,7 +130,7 @@ if __name__ == '__main__':
             if next_line == 'END!':
                 print('Bob:', LAST_LINE)
                 break
-            
+
             print('Bob:', next_line)
             next_line = conversation_graph.find_next_line_in_path(next_line)
             if next_line == 'END!':
@@ -160,4 +138,3 @@ if __name__ == '__main__':
                 break
             print('')
         print('--')
-

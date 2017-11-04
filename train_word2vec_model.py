@@ -1,19 +1,15 @@
-from os import listdir
-from os.path import isfile, join
 from gensim import utils
 from gensim.models.doc2vec import TaggedDocument
 from gensim.models import Doc2Vec
-import numpy
 from random import shuffle
-import copy
 import nltk
-
 
 path = 'ordered_lines.txt'
 
 WINDOW_SIZE = 20
 
-lines = [line for line in open(path, encoding = "ISO-8859-1").readlines()]
+lines = [line for line in open(path, encoding="ISO-8859-1").readlines()]
+
 
 class LabeledLineSentence(object):
     def __init__(self, sources):
@@ -39,7 +35,7 @@ class LabeledLineSentence(object):
         return self.sentences
 
     def sentences_perm(self):
-        shuffle (self.sentences)
+        shuffle(self.sentences)
         return self.sentences
 
 
@@ -55,8 +51,8 @@ sentences = LabeledLineSentence(sources)
 model = Doc2Vec(window=WINDOW_SIZE, size=100, sample=1e-4, negative=5, workers=4, dm=0)
 model.build_vocab(sentences.to_array())
 
-for epoch in range(0, 501):
-    print ('Training epoch ' + str(epoch) + '.')
-    model.train(sentences.sentences_perm())
+for epoch in range(0, 151):
+    print('Training epoch ' + str(epoch) + '.')
+    model.train(sentences.sentences_perm(), total_examples=model.corpus_count, epochs=model.iter)
     if epoch % 50 == 0:
-        model.save('./lines-'+str(epoch)+'.d2v')
+        model.save('./lines-' + str(epoch) + '.d2v')
