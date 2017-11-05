@@ -1,25 +1,28 @@
 import nltk
 import random
 import igraph as ig
+import matplotlib.pyplot as plt
 
 from gensim.models import Doc2Vec
 from gensim import utils
+
+from plot_chat_path import plot_sentiment, plot_temporal_cluster_using_path, load_tsne_coordinates_from
 
 
 class ConversationGraph:
     def __init__(self, conversation_file, edges_filename, doc2vec_filename):
         self.g, self.vertex_to_lines_dict, self.lines_to_vertex_dict = self._load_edges(edges_filename)
         self.doc2vec_model = Doc2Vec.load(doc2vec_filename)
-        goal_line = 'LINES_106702'
-        print(self.lines_to_vertex_dict.keys())
-        self.goal = self.lines_to_vertex_dict[goal_line]
-        self.goal_vector = self.doc2vec_model.docvecs[goal_line]
+        self.goal_line = 'LINES_106702'
+        self.goal = self.lines_to_vertex_dict[self.goal_line]
+        self.goal_vector = self.doc2vec_model.docvecs[self.goal_line]
         self.lines_dict = {'LINES_' + str(i): line.replace('\n', '')
                            for i, line in enumerate(open(conversation_file,
                                                          encoding="ISO-8859-1").readlines())}
         self.current_node = -1
         self.current_vector = []
         self.path = []
+        self.lines_in_path = []
 
     def _load_edges(self, filename):
         file = open(filename)
@@ -66,20 +69,22 @@ class ConversationGraph:
         vector = model.infer_vector(words)
         pairs = model.docvecs.most_similar([vector], topn=1000)
         best_node = -1
+        best_vector = ''
         best_line = ''
         for pair in pairs:
             line = pair[0]
             try:
                 vertex = self.lines_to_vertex_dict[line]
                 best_node = vertex
-                best_line = model.docvecs[line]
+                best_vector = model.docvecs[line]
+                best_line = line
                 break
             except:
                 pass
-        return best_node, best_line
+        return best_node, best_vector, best_line
 
     def define_endpoint(self, end_string):
-        self.goal, self.goal_vector = self._get_most_similar_vertex_from_string(end_string)
+        self.goal, self.goal_vector, _ = self._get_most_similar_vertex_from_string(end_string)
 
     def _get_shortest_paths(self, start, end):
         try:
@@ -97,8 +102,14 @@ class ConversationGraph:
             return str(path[0])
         return -1
 
+    def _find_random_line_number_in_node(self, node):
+        lines_in_node = self.vertex_to_lines_dict[node]
+        return random.choice(lines_in_node)
+
     def find_next_line_in_path(self, string):
-        current_node, current_vector = self._get_most_similar_vertex_from_string(string)
+        current_node, current_vector, current_line = self._get_most_similar_vertex_from_string(string)
+        if not self.lines_in_path:
+            self.lines_in_path.append(current_line)
         if current_node == self.goal:
             return 'END!'
         node = self._find_next_node_in_path(current_node)
@@ -108,8 +119,16 @@ class ConversationGraph:
             node = self.goal
         self.current_node = node
         self.current_vector = current_vector
-        lines = self.vertex_to_lines_dict[node]
-        return self.lines_dict[random.choice(lines)]
+        chosen_line_number = self._find_random_line_number_in_node(node)
+        chosen_line = self.lines_dict[chosen_line_number]
+        self.lines_in_path.append(chosen_line_number)
+        return chosen_line
+
+    def get_line_numbers_in_path(self):
+        return [int(item.replace('LINES_', '')) for item in self.lines_in_path]
+
+    def start_new_path(self):
+        self.lines_in_path = []
 
 
 if __name__ == '__main__':
@@ -120,11 +139,13 @@ if __name__ == '__main__':
     FIRST_LINE = 'Hello! How are you?'
     LAST_LINE = 'Goodbye!'
     conversation_graph.define_endpoint(LAST_LINE)
+    line_xy_dict, _ = load_tsne_coordinates_from('results/tsne_coordinates.txt')
 
     for _ in range(100):
+        lines = []
+        conversation_graph.start_new_path()
         next_line = FIRST_LINE
         while next_line != 'END!':
-
             print('Alice: ', next_line)
             next_line = conversation_graph.find_next_line_in_path(next_line)
             if next_line == 'END!':
@@ -137,4 +158,8 @@ if __name__ == '__main__':
                 print('Alice:', LAST_LINE)
                 break
             print('')
+        nodes_in_path = conversation_graph.get_line_numbers_in_path()
+        plot_sentiment(line_xy_dict)
+        plot_temporal_cluster_using_path(line_xy_dict, nodes_in_path)
+        plt.show()
         print('--')

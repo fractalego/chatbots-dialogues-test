@@ -39,3 +39,12 @@ Then you can generate the dialogues using
 ```bash
 $ python3 generate_dialogues.py
 ```
+
+
+DISCLAIMER
+----------
+This code is merely a toy dialogue generator.
+The dialogue generator uses lines from the [Cornell movie corpus](https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html) and arranges them in different order.
+These are lines taken from real movies. I did not modify these lines, nor looked for offensive content.
+I completely disassociate myself from any offensive lines that might be randomly chosen and printed out.
+
